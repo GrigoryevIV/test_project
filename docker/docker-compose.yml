@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: StrongPass123
+      POSTGRES_DB: appdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./../db-init:/docker-entrypoint-initdb.d
+    networks:
+      - appnet
+
+  backend:
+    build: ../backend
+    environment:
+      DATABASE_URL: postgres://appuser:StrongPass123@db:5432/appdb
+    depends_on:
+      - db
+    networks:
+      - appnet
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ../frontend
+    depends_on:
+      - backend
+    networks:
+      - appnet
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:
+
+networks:
+  appnet:
+    driver: bridge
