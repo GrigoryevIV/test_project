@@ -1,5 +1,3 @@
-node_modules
-dist
-.env
+# Backup files
+.git.backup/
 .DS_Store
-npm-debug.log

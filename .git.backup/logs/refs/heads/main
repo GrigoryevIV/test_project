@@ -1,4 +1,0 @@
-0000000000000000000000000000000000000000 8b95ec31d8c1be71e3a6e2d642d447245b52d11a Alexey Rulyov <alex7895@yandex.ru> 1765342942 +0500	commit (initial): Initial commit: проект для развертывания на QazTech
-8b95ec31d8c1be71e3a6e2d642d447245b52d11a 8b95ec31d8c1be71e3a6e2d642d447245b52d11a Alexey Rulyov <alex7895@yandex.ru> 1765342942 +0500	Branch: renamed refs/heads/master to refs/heads/main
-8b95ec31d8c1be71e3a6e2d642d447245b52d11a 8b95ec31d8c1be71e3a6e2d642d447245b52d11a Alexey Rulyov <alex7895@yandex.ru> 1765343062 +0500	Branch: renamed refs/heads/main to refs/heads/main
-8b95ec31d8c1be71e3a6e2d642d447245b52d11a 6159a9e59906f7f84c8b95df8b8855f5fe3cefff Alexey Rulyov <alex7895@yandex.ru> 1765343240 +0500	commit: Add QazTech deployment project
