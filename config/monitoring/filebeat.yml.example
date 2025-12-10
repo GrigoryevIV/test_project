@@ -1,0 +1,95 @@
+# Конфигурация Filebeat для отправки логов в OpenSearch
+# Согласно инструкции QazTech, шаг 15.14
+#
+# Использование:
+#   1. Скопировать в /etc/filebeat/filebeat.yml
+#   2. Заменить <PROJECT_NAME> и <ENVIRONMENT> на реальные значения
+#   3. Установить переменные окружения OPENSEARCH_USERNAME и OPENSEARCH_PASSWORD
+#   4. Перезапустить Filebeat: sudo systemctl restart filebeat
+
+filebeat.inputs:
+  # Логи системные
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/*.log
+      - /var/log/syslog
+    fields:
+      project: <PROJECT_NAME>
+      environment: <ENVIRONMENT>
+      log_type: system
+    fields_under_root: true
+    multiline.pattern: '^\d{4}-\d{2}-\d{2}'
+    multiline.negate: true
+    multiline.match: after
+
+  # Логи приложения
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/*.log
+      - /opt/app/logs/*.log
+      - /home/ubuntu/app/logs/*.log
+    fields:
+      project: <PROJECT_NAME>
+      environment: <ENVIRONMENT>
+      log_type: application
+    fields_under_root: true
+    multiline.pattern: '^\d{4}-\d{2}-\d{2}'
+    multiline.negate: true
+    multiline.match: after
+
+  # Логи Nginx
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/*.log
+      - /var/log/nginx/access.log
+      - /var/log/nginx/error.log
+    fields:
+      project: <PROJECT_NAME>
+      environment: <ENVIRONMENT>
+      log_type: nginx
+    fields_under_root: true
+
+# Обработка полей
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+# Вывод в OpenSearch
+output.opensearch:
+  hosts: ["https://opensearch.qaztech.gov.kz:9200"]
+  index: "<PROJECT_NAME>-<ENVIRONMENT>-logs-%{+yyyy.MM.dd}"
+  template.name: "<PROJECT_NAME>-<ENVIRONMENT>-logs"
+  template.pattern: "<PROJECT_NAME>-<ENVIRONMENT>-logs-*"
+  template.settings:
+    index.number_of_shards: 1
+    index.number_of_replicas: 1
+  ssl:
+    verification_mode: none
+  username: "${OPENSEARCH_USERNAME}"
+  password: "${OPENSEARCH_PASSWORD}"
+
+# Настройка шаблонов
+setup.template.name: "<PROJECT_NAME>-<ENVIRONMENT>-logs"
+setup.template.pattern: "<PROJECT_NAME>-<ENVIRONMENT>-logs-*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 1
+
+# Настройки Kibana (OpenSearch Dashboards)
+setup.kibana:
+  host: "https://opensearch.qaztech.gov.kz:5601"
+
+# Логирование Filebeat
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+

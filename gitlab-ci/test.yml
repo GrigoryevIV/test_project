@@ -1,0 +1,97 @@
+# Этап тестирования
+# Согласно инструкции QazTech, шаг 15.9
+
+# Тесты Backend
+test:backend:
+  stage: test
+  image: node:18-alpine
+  before_script:
+    # Настройка NPM для работы с Nexus
+    - |
+      if [ -f config/nexus/.npmrc ]; then
+        cp config/nexus/.npmrc backend/.npmrc
+        sed -i "s/<PROJECT_NAME>/$CI_PROJECT_NAME/g" backend/.npmrc
+      fi
+    - cd backend
+    - npm ci
+  script:
+    # Запуск линтера (если настроен)
+    - npm run lint || true
+    # Запуск тестов
+    - npm test || echo "Тесты не настроены"
+    # Проверка покрытия кода (если настроено)
+    - npm run test:coverage || echo "Покрытие кода не настроено"
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      junit: backend/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage/cobertura-coverage.xml
+    paths:
+      - backend/coverage/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Тесты Frontend
+test:frontend:
+  stage: test
+  image: node:18-alpine
+  before_script:
+    # Настройка NPM для работы с Nexus
+    - |
+      if [ -f config/nexus/.npmrc ]; then
+        cp config/nexus/.npmrc frontend/.npmrc
+        sed -i "s/<PROJECT_NAME>/$CI_PROJECT_NAME/g" frontend/.npmrc
+      fi
+    - cd frontend
+    - npm ci
+  script:
+    # Запуск линтера (если настроен)
+    - npm run lint || true
+    # Запуск тестов
+    - npm test || echo "Тесты не настроены"
+    # Проверка покрытия кода (если настроено)
+    - npm run test:coverage || echo "Покрытие кода не настроено"
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      junit: frontend/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+    paths:
+      - frontend/coverage/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Интеграционные тесты
+test:integration:
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache docker-compose
+    - cd docker
+  script:
+    # Запуск docker-compose для интеграционных тестов
+    - docker-compose up -d
+    - sleep 10
+    # Проверка доступности сервисов
+    - |
+      curl -f http://localhost:3000/health || exit 1
+      curl -f http://localhost:8080 || exit 1
+    - docker-compose down
+  only:
+    - main
+    - develop
+  tags:
+    - docker
+

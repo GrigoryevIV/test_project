@@ -1,0 +1,87 @@
+# Этап анализа кода через SonarQube
+# Согласно инструкции QazTech, шаг 15.10
+
+# Анализ Backend
+sonarqube:backend:
+  stage: sonarqube
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - cd backend
+    # Настройка NPM для работы с Nexus
+    - |
+      if [ -f ../config/nexus/.npmrc ]; then
+        cp ../config/nexus/.npmrc .npmrc
+        sed -i "s/<PROJECT_NAME>/$CI_PROJECT_NAME/g" .npmrc
+      fi
+    - npm ci
+    # Запуск SonarQube анализа
+    - |
+      sonar-scanner \
+        -Dsonar.projectKey=${CI_PROJECT_NAME}-backend \
+        -Dsonar.sources=. \
+        -Dsonar.host.url=${SONARQUBE_URL} \
+        -Dsonar.login=${SONARQUBE_TOKEN} \
+        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+        -Dsonar.coverage.exclusions=**/*.test.js,**/node_modules/** \
+        -Dsonar.qualitygate.wait=true
+  artifacts:
+    paths:
+      - backend/.sonar/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+  allow_failure: true
+
+# Анализ Frontend
+sonarqube:frontend:
+  stage: sonarqube
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - cd frontend
+    # Настройка NPM для работы с Nexus
+    - |
+      if [ -f ../config/nexus/.npmrc ]; then
+        cp ../config/nexus/.npmrc .npmrc
+        sed -i "s/<PROJECT_NAME>/$CI_PROJECT_NAME/g" .npmrc
+      fi
+    - npm ci
+    # Запуск SonarQube анализа
+    - |
+      sonar-scanner \
+        -Dsonar.projectKey=${CI_PROJECT_NAME}-frontend \
+        -Dsonar.sources=. \
+        -Dsonar.host.url=${SONARQUBE_URL} \
+        -Dsonar.login=${SONARQUBE_TOKEN} \
+        -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+        -Dsonar.coverage.exclusions=**/*.test.js,**/node_modules/**,**/*.test.jsx \
+        -Dsonar.qualitygate.wait=true
+  artifacts:
+    paths:
+      - frontend/.sonar/
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+    - merge_requests
+  allow_failure: true
+

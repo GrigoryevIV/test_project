@@ -1,0 +1,48 @@
+# GitLab CI/CD конфигурация для развертывания на платформе QazTech
+# Согласно инструкции QazTech, шаги 15.9-15.12
+#
+# Этапы пайплайна:
+#   - build: сборка приложения
+#   - test: запуск тестов
+#   - security: проверка безопасности (SAST, DefectDojo)
+#   - sonarqube: анализ кода
+#   - deploy: развертывание по средам
+
+stages:
+  - build
+  - test
+  - security
+  - sonarqube
+  - deploy
+
+# Переменные по умолчанию
+# URL инструментов платформы QazTech
+variables:
+  HARBOR_URL: "https://harbor.qaztech.gov.kz"
+  NEXUS_URL: "https://nexus.qaztech.gov.kz"
+  SONARQUBE_URL: "https://sonarqube.qaztech.gov.kz"
+  GITLAB_URL: "https://gitlab.qaztech.gov.kz"
+  GRAFANA_URL: "https://grafana.qaztech.gov.kz"
+  OPENSEARCH_URL: "https://opensearch.qaztech.gov.kz"
+  VAULT_ADDR: "https://vault.qaztech.gov.kz"
+  PORTAL_URL: "https://portal.qaztech.gov.kz"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# Включение шаблонов из директории gitlab-ci
+include:
+  - local: 'gitlab-ci/build.yml'
+  - local: 'gitlab-ci/test.yml'
+  - local: 'gitlab-ci/security.yml'
+  - local: 'gitlab-ci/sonarqube.yml'
+  - local: 'gitlab-ci/deploy.yml'
+
+# Кэширование для ускорения сборки
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+    - .npm/
+    - backend/node_modules/
+    - frontend/node_modules/
+

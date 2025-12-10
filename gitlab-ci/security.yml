@@ -1,0 +1,90 @@
+# Этап проверки безопасности (SAST и DefectDojo)
+# Согласно инструкции QazTech, шаги 15.11 и 15.12
+
+# SAST (Static Application Security Testing) - встроенный в GitLab
+sast:
+  stage: security
+  image: 
+    name: "registry.gitlab.com/security-products/sast:${SAST_VERSION:-latest}"
+    entrypoint: [""]
+  variables:
+    SAST_VERSION: "15.0"
+    SAST_ANALYZER_IMAGE_TAG: "3"
+    SAST_IMAGE_SUFFIX: ""
+  script:
+    - /analyzer run
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+    paths:
+      - gl-sast-report.json
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Dependency Scanning - проверка уязвимостей в зависимостях
+dependency_scanning:
+  stage: security
+  image:
+    name: "registry.gitlab.com/security-products/dependency-scanning:${DS_VERSION:-latest}"
+    entrypoint: [""]
+  variables:
+    DS_VERSION: "5"
+    DS_IMAGE_SUFFIX: ""
+  script:
+    - /analyzer run
+  artifacts:
+    reports:
+      dependency_scanning: gl-dependency-scanning-report.json
+    paths:
+      - gl-dependency-scanning-report.json
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Загрузка отчетов в DefectDojo
+defectdojo:
+  stage: security
+  image: curlimages/curl:latest
+  script:
+    # Сборка всех отчетов безопасности
+    - |
+      cat > defectdojo-report.json << EOF
+      {
+        "scan_type": "GitLab SAST",
+        "product_name": "$CI_PROJECT_NAME",
+        "engagement_name": "$CI_COMMIT_REF_NAME",
+        "auto_create_context": true,
+        "close_old_findings": false,
+        "push_to_jira": false,
+        "files": [
+          {
+            "file": "gl-sast-report.json",
+            "content": $(cat gl-sast-report.json | jq -c .)
+          },
+          {
+            "file": "gl-dependency-scanning-report.json",
+            "content": $(cat gl-dependency-scanning-report.json | jq -c .)
+          }
+        ]
+      }
+      EOF
+    # Отправка в DefectDojo (заменить URL и токен)
+    - |
+      curl -X POST \
+        -H "Authorization: Token $DEFECTDOJO_API_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d @defectdojo-report.json \
+        "$DEFECTDOJO_URL/api/v2/import-scan/" || echo "DefectDojo не настроен"
+  artifacts:
+    paths:
+      - defectdojo-report.json
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+  when: manual
+  allow_failure: true
+

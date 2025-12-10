@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Конфигурация Maven для работы с Nexus репозиторием
+  Согласно инструкции QazTech, шаг 15.6
+  
+  Использование:
+    Скопировать в ~/.m2/settings.xml
+    Заменить <PROJECT_NAME> на имя вашего проекта
+    Установить переменные окружения NEXUS_USERNAME и NEXUS_PASSWORD
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+          http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    
+    <!-- Серверы для аутентификации -->
+    <servers>
+        <server>
+            <id>nexus-<PROJECT_NAME></id>
+            <username>${env.NEXUS_USERNAME}</username>
+            <password>${env.NEXUS_PASSWORD}</password>
+        </server>
+    </servers>
+    
+    <!-- Зеркала репозиториев -->
+    <mirrors>
+        <mirror>
+            <id>nexus-<PROJECT_NAME>-mirror</id>
+            <mirrorOf>*</mirrorOf>
+            <url>https://nexus.qaztech.gov.kz/repository/<PROJECT_NAME>-repo/</url>
+        </mirror>
+    </mirrors>
+    
+    <!-- Профили -->
+    <profiles>
+        <profile>
+            <id>nexus-<PROJECT_NAME></id>
+            <repositories>
+                <repository>
+                    <id>nexus-<PROJECT_NAME></id>
+                    <url>https://nexus.qaztech.gov.kz/repository/<PROJECT_NAME>-repo/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>nexus-<PROJECT_NAME></id>
+                    <url>https://nexus.qaztech.gov.kz/repository/<PROJECT_NAME>-repo/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+    </profiles>
+    
+    <!-- Активация профиля -->
+    <activeProfiles>
+        <activeProfile>nexus-<PROJECT_NAME></activeProfile>
+    </activeProfiles>
+</settings>
+

@@ -1,0 +1,74 @@
+# Этап сборки приложения
+# Согласно инструкции QazTech, шаг 15.9
+
+# Сборка Backend
+build:backend:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_BUILDKIT: 1
+  before_script:
+    # Вход в Harbor
+    - echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL --username "$HARBOR_USERNAME" --password-stdin
+    # Настройка NPM для работы с Nexus
+    - |
+      if [ -f config/nexus/.npmrc ]; then
+        cp config/nexus/.npmrc backend/.npmrc
+        sed -i "s/<PROJECT_NAME>/$CI_PROJECT_NAME/g" backend/.npmrc
+      fi
+  script:
+    - cd backend
+    - |
+      docker build \
+        --build-arg NODE_ENV=production \
+        --build-arg NEXUS_URL=$NEXUS_URL \
+        -t $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA \
+        -t $HARBOR_URL/$CI_PROJECT_NAME/backend:latest \
+        .
+    - docker push $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+    - docker push $HARBOR_URL/$CI_PROJECT_NAME/backend:latest
+  only:
+    - main
+    - develop
+    - merge_requests
+  tags:
+    - docker
+
+# Сборка Frontend
+build:frontend:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_BUILDKIT: 1
+  before_script:
+    # Вход в Harbor
+    - echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL --username "$HARBOR_USERNAME" --password-stdin
+    # Настройка NPM для работы с Nexus
+    - |
+      if [ -f config/nexus/.npmrc ]; then
+        cp config/nexus/.npmrc frontend/.npmrc
+        sed -i "s/<PROJECT_NAME>/$CI_PROJECT_NAME/g" frontend/.npmrc
+      fi
+  script:
+    - cd frontend
+    - |
+      docker build \
+        --build-arg NODE_ENV=production \
+        --build-arg NEXUS_URL=$NEXUS_URL \
+        --build-arg VITE_API_URL=$VITE_API_URL \
+        -t $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA \
+        -t $HARBOR_URL/$CI_PROJECT_NAME/frontend:latest \
+        .
+    - docker push $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+    - docker push $HARBOR_URL/$CI_PROJECT_NAME/frontend:latest
+  only:
+    - main
+    - develop
+    - merge_requests
+  tags:
+    - docker
+

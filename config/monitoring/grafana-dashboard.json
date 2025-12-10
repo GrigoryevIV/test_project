@@ -1,0 +1,149 @@
+{
+  "dashboard": {
+    "title": "QazTech Project Monitoring",
+    "description": "Дашборд для мониторинга проекта на платформе QazTech",
+    "tags": ["qaztech", "monitoring", "prometheus"],
+    "timezone": "Asia/Almaty",
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$instance:9100\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "CPU Usage",
+            "max": 100,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "RAM Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"$instance:9100\"} / node_memory_MemTotal_bytes{instance=~\"$instance:9100\"})) * 100",
+            "legendFormat": "RAM Usage %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "RAM Usage",
+            "max": 100,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Storage Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(1 - (node_filesystem_avail_bytes{instance=~\"$instance:9100\",mountpoint=\"/\"} / node_filesystem_size_bytes{instance=~\"$instance:9100\",mountpoint=\"/\"})) * 100",
+            "legendFormat": "Disk Usage %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Disk Usage",
+            "max": 100,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Network Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total{instance=~\"$instance:9100\"}[5m])",
+            "legendFormat": "Receive"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total{instance=~\"$instance:9100\"}[5m])",
+            "legendFormat": "Transmit"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": "Network Traffic"
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "type": "query",
+          "query": "label_values(node_cpu_seconds_total, instance)",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "project",
+          "type": "constant",
+          "query": "<PROJECT_NAME>",
+          "current": {
+            "text": "<PROJECT_NAME>",
+            "value": "<PROJECT_NAME>"
+          }
+        },
+        {
+          "name": "environment",
+          "type": "constant",
+          "query": "<ENVIRONMENT>",
+          "current": {
+            "text": "<ENVIRONMENT>",
+            "value": "<ENVIRONMENT>"
+          }
+        }
+      ]
+    }
+  },
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "slug": "qaztech-project-monitoring",
+    "url": "/d/qaztech-project-monitoring/qaztech-project-monitoring",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2025-01-01T00:00:00Z",
+    "updated": "2025-01-01T00:00:00Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 1,
+    "hasAcl": false,
+    "isFolder": false,
+    "folderId": 0,
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": ""
+  }
+}
+

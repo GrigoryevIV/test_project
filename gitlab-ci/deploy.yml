@@ -1,0 +1,180 @@
+# Этап развертывания по средам
+# Согласно инструкции QazTech, шаги 15.9 и 16-19
+
+# Развертывание в DEV среду
+deploy:dev:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client curl
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $DEV_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    # Подключение к серверу и развертывание
+    - |
+      ssh -o StrictHostKeyChecking=no ubuntu@$DEV_SERVER_IP << 'DEPLOY_SCRIPT'
+        # Вход в Harbor
+        echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL --username "$HARBOR_USERNAME" --password-stdin
+        
+        # Остановка старых контейнеров
+        docker stop backend frontend || true
+        docker rm backend frontend || true
+        
+        # Загрузка новых образов
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        
+        # Запуск контейнеров
+        docker run -d \
+          --name backend \
+          --restart unless-stopped \
+          --network host \
+          -e DATABASE_URL="$DEV_DATABASE_URL" \
+          -e NODE_ENV=production \
+          $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        
+        docker run -d \
+          --name frontend \
+          --restart unless-stopped \
+          --network host \
+          -e VITE_API_URL="$DEV_API_URL" \
+          $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        
+        # Проверка здоровья
+        sleep 5
+        curl -f http://localhost:3000/health || exit 1
+      DEPLOY_SCRIPT
+  environment:
+    name: dev
+    url: https://dev.$CI_PROJECT_NAME.qaztech.gov.kz
+  only:
+    - develop
+  when: manual
+  tags:
+    - deploy
+
+# Развертывание в TEST среду
+deploy:test:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client curl
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $TEST_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -o StrictHostKeyChecking=no ubuntu@$TEST_SERVER_IP << 'DEPLOY_SCRIPT'
+        echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL --username "$HARBOR_USERNAME" --password-stdin
+        docker stop backend frontend || true
+        docker rm backend frontend || true
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        docker run -d --name backend --restart unless-stopped --network host \
+          -e DATABASE_URL="$TEST_DATABASE_URL" -e NODE_ENV=production \
+          $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker run -d --name frontend --restart unless-stopped --network host \
+          -e VITE_API_URL="$TEST_API_URL" \
+          $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        sleep 5
+        curl -f http://localhost:3000/health || exit 1
+      DEPLOY_SCRIPT
+  environment:
+    name: test
+    url: https://test.$CI_PROJECT_NAME.qaztech.gov.kz
+  only:
+    - main
+  when: manual
+  tags:
+    - deploy
+
+# Развертывание в STAGE среду
+deploy:stage:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client curl
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $STAGE_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -o StrictHostKeyChecking=no ubuntu@$STAGE_SERVER_IP << 'DEPLOY_SCRIPT'
+        echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL --username "$HARBOR_USERNAME" --password-stdin
+        docker stop backend frontend || true
+        docker rm backend frontend || true
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        docker run -d --name backend --restart unless-stopped --network host \
+          -e DATABASE_URL="$STAGE_DATABASE_URL" -e NODE_ENV=production \
+          $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker run -d --name frontend --restart unless-stopped --network host \
+          -e VITE_API_URL="$STAGE_API_URL" \
+          $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        sleep 5
+        curl -f http://localhost:3000/health || exit 1
+      DEPLOY_SCRIPT
+  environment:
+    name: stage
+    url: https://stage.$CI_PROJECT_NAME.qaztech.gov.kz
+  only:
+    - main
+  when: manual
+  tags:
+    - deploy
+
+# Развертывание в PROD среду
+deploy:prod:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client curl
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $PROD_SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -o StrictHostKeyChecking=no ubuntu@$PROD_SERVER_IP << 'DEPLOY_SCRIPT'
+        echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL --username "$HARBOR_USERNAME" --password-stdin
+        # Blue-Green развертывание для минимизации downtime
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker pull $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        
+        # Запуск новых контейнеров с другим именем
+        docker run -d --name backend-new --restart unless-stopped --network host \
+          -e DATABASE_URL="$PROD_DATABASE_URL" -e NODE_ENV=production \
+          $HARBOR_URL/$CI_PROJECT_NAME/backend:$CI_COMMIT_SHORT_SHA
+        docker run -d --name frontend-new --restart unless-stopped --network host \
+          -e VITE_API_URL="$PROD_API_URL" \
+          $HARBOR_URL/$CI_PROJECT_NAME/frontend:$CI_COMMIT_SHORT_SHA
+        
+        # Проверка здоровья новых контейнеров
+        sleep 10
+        curl -f http://localhost:3001/health || exit 1
+        
+        # Переключение трафика (если используется балансировщик)
+        # Или остановка старых и переименование новых
+        docker stop backend frontend || true
+        docker rm backend frontend || true
+        docker rename backend-new backend
+        docker rename frontend-new frontend
+      DEPLOY_SCRIPT
+  environment:
+    name: production
+    url: https://$CI_PROJECT_NAME.qaztech.gov.kz
+  only:
+    - main
+    - tags
+  when: manual
+  tags:
+    - deploy
+
